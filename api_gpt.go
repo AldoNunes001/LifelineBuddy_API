@@ -7,6 +7,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+
+	"github.com/joho/godotenv"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -14,8 +17,6 @@ const (
 	MODEL      = "text-davinci-003"
 	MAX_TOKENS = 60
 	ROLE       = "Aja como um profissional especializado em evitar que pessoas cometam suicídios."
-	// GPT3URL     = "https://api.openai.com/v1/engines/text-davinci-003/completions"
-	// GPT3URL     = "https://api.openai.com/v1/engines/davinci-codex/completions"
 )
 
 type GPT3Request struct {
@@ -25,11 +26,20 @@ type GPT3Request struct {
 }
 
 func main() {
+	// Load environment variables from .env file
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
 	http.HandleFunc("/buddy", buddyHandler)
 
 	fmt.Println("Servidor iniciando na porta 8080")
 	http.ListenAndServe(":8080", nil)
 }
+
+// Rest of the code...
+
 
 func buddyHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
