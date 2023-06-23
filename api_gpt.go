@@ -15,7 +15,7 @@ import (
 const (
 	GPT3URL    = "https://api.openai.com/v1/completions"
 	MODEL      = "text-davinci-003"
-	MAX_TOKENS = 60
+	MAX_TOKENS = 500
 	ROLE       = "Aja como um profissional especializado em evitar que pessoas cometam suicídios."
 )
 
@@ -39,7 +39,6 @@ func main() {
 }
 
 // Rest of the code...
-
 
 func buddyHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
