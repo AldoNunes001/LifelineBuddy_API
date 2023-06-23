@@ -25,13 +25,13 @@ type GPT3Request struct {
 }
 
 func main() {
-	http.HandleFunc("/buddy", helloHandler)
+	http.HandleFunc("/buddy", buddyHandler)
 
 	fmt.Println("Servidor iniciando na porta 8080")
 	http.ListenAndServe(":8080", nil)
 }
 
-func helloHandler(w http.ResponseWriter, r *http.Request) {
+func buddyHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 
 	case http.MethodGet:
