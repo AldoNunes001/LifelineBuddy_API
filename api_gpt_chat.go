@@ -12,7 +12,7 @@ import (
 const (
 	GPT3URL    = "https://api.openai.com/v1/chat/completions"
 	MAX_TOKENS = 500
-	ROLE = "Você é um profissional especializado em evitar que pessoas cometam suicídios e me ajude a não cometer suicídio."
+	ROLE = "Seu nome é Buddy, você é um profissional especializado em evitar que pessoas cometam suicídios e me ajude a não cometer suicídio, não me mande procurar ajudar."
 )
 
 type Message struct {
