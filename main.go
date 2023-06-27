@@ -15,7 +15,7 @@ const (
 	GPT3URL    = "https://api.openai.com/v1/chat/completions"
 	MAX_TOKENS = 500
 	MODEL      = "gpt-3.5-turbo"
-	ROLE       = "Seu nome é Buddy, você é um profissional especializado em evitar que pessoas cometam suicídios e me ajude a não cometer suicídio, não me mande procurar ajudar."
+	ROLE       = "Seu nome é Buddy, você é um profissional especializado em evitar que pessoas cometam suicídios e me ajude a não cometer suicídio."
 )
 
 type Message struct {
@@ -58,36 +58,93 @@ func main() {
 }
 
 func askToBuddy(c *gin.Context) {
-	body, err := io.ReadAll(c.Request.Body)
+	body, err := readRequestBody(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		handleError(c, err, http.StatusBadRequest)
 		return
 	}
 
-	prompt := string(body)
-	responseStr, err := makeGPT3Request(prompt)
+	responseStr, err := makeGPT3Request(string(body))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		handleError(c, err, http.StatusInternalServerError)
 		return
 	}
 
-	var response GPT3Response
-	err = json.Unmarshal([]byte(responseStr), &response)
+	response, err := parseResponse(responseStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		handleError(c, err, http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Println(responseStr)
+	if len(response.Choices) == 0 {
+		handleError(c, fmt.Errorf("no choices in the response"), http.StatusInternalServerError)
+	}
 	c.IndentedJSON(http.StatusOK, response.Choices[0].Message.Content)
 }
 
+func readRequestBody(c *gin.Context) ([]byte, error) {
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(body) == 0 {
+		return nil, fmt.Errorf("request body is empty")
+	}
+
+	return body, nil
+}
+
+func handleError(c *gin.Context, err error, status int) {
+	c.JSON(status, gin.H{"error": err.Error()})
+}
+
+func parseResponse(responseStr string) (*GPT3Response, error) {
+	var response GPT3Response
+	err := json.Unmarshal([]byte(responseStr), &response)
+	if err != nil {
+		return nil, err
+	}
+	return &response, nil
+}
+
+
+// ...outros códigos...
+
 func makeGPT3Request(prompt string) (string, error) {
+	openAIKey, err := getOpenAIKey()
+	if err != nil {
+		return "", err
+	}
+
+	payload, err := preparePayload(prompt)
+	if err != nil {
+		return "", err
+	}
+
+	req, err := createRequest(payload, openAIKey)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := executeRequest(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	return readResponse(resp)
+}
+
+func getOpenAIKey() (string, error) {
 	openAIKey := os.Getenv("OPENAI_KEY")
 	if openAIKey == "" {
 		return "", fmt.Errorf("OPENAI_KEY undefined")
 	}
+	return openAIKey, nil
+}
 
+func preparePayload(prompt string) ([]byte, error) {
 	request := GPT3Request{
 		Model: MODEL,
 		Messages: []Message{
@@ -96,30 +153,27 @@ func makeGPT3Request(prompt string) (string, error) {
 		},
 	}
 
-	// Criar a requisição para o GPT-3
-	reqBody, err := json.Marshal(request)
+	return json.Marshal(request)
+}
+
+func createRequest(payload []byte, openAIKey string) (*http.Request, error) {
+	req, err := http.NewRequest("POST", GPT3URL, bytes.NewBuffer(payload))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", GPT3URL, bytes.NewBuffer(reqBody))
-	if err != nil {
-		return "", err
-	}
-
-	// Adicionar cabeçalhos necessários
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+openAIKey)
 
-	// Fazer a requisição
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
+	return req, nil
+}
 
-	// Ler a resposta
+func executeRequest(req *http.Request) (*http.Response, error) {
+	client := &http.Client{}
+	return client.Do(req)
+}
+
+func readResponse(resp *http.Response) (string, error) {
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
