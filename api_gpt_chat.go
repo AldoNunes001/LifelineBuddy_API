@@ -10,18 +10,38 @@ import (
 )
 
 const (
-	GPT3URL    = "https://api.openai.com/v1/completions"
-	MODEL      = "text-davinci-003"
-	MAX_TOKENS = 60
-	ROLE       = "Aja como um profissional especializado em evitar que pessoas cometam suicídios."
-	// GPT3URL     = "https://api.openai.com/v1/engines/text-davinci-003/completions"
-	// GPT3URL     = "https://api.openai.com/v1/engines/davinci-codex/completions"
+	GPT3URL    = "https://api.openai.com/v1/chat/completions"
+	MAX_TOKENS = 500
+	ROLE = "Seu nome é Buddy, você é um profissional especializado em evitar que pessoas cometam suicídios e me ajude a não cometer suicídio, não me mande procurar ajudar."
 )
 
+type Message struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
 type GPT3Request struct {
-	Prompt    string `json:"prompt"`
-	Model     string `json:"model"`
-	MaxTokens int    `json:"max_tokens"`
+	Model     string    `json:"model"`
+	Messages  []Message `json:"messages"`
+	// MaxTokens int       `json:"max_tokens,omitempty"`
+}
+
+type GPT3Response struct {
+	ID     string `json:"id"`
+	Object string `json:"object"`
+	Created int64 `json:"created"`
+	Model   string `json:"model"`
+	Choices []struct {
+		Text          string      `json:"text"`
+		Index         int         `json:"index"`
+		Logprobs      interface{} `json:"logprobs"`
+		FinishReason  string      `json:"finish_reason"`
+	} `json:"choices"`
+	Usage struct {
+		PromptTokens      int `json:"prompt_tokens"`
+		CompletionTokens  int `json:"completion_tokens"`
+		TotalTokens       int `json:"total_tokens"`
+	} `json:"usage"`
 }
 
 func main() {
@@ -71,11 +91,17 @@ func makeGPT3Request(prompt string) (string, error) {
 		return "", fmt.Errorf("OPENAI_KEY não definido")
 	}
 
-	// Adicionar o papel do profissional especializado ao prompt
-	prompt = ROLE + "\n" + prompt
+	// Preparar a requisição para o GPT-3
+	request := GPT3Request{
+		Model: "gpt-3.5-turbo",
+		Messages: []Message{
+			{Role: "system", Content: ROLE},
+			{Role: "user", Content: prompt},
+		},
+	}
 
 	// Criar a requisição para o GPT-3
-	reqBody, err := json.Marshal(GPT3Request{Prompt: prompt, Model: MODEL, MaxTokens: MAX_TOKENS})
+	reqBody, err := json.Marshal(request)
 	if err != nil {
 		return "", err
 	}
@@ -103,5 +129,5 @@ func makeGPT3Request(prompt string) (string, error) {
 		return "", err
 	}
 
-	return string(respBody), nil
+	return string(respBody), nil 
 }
